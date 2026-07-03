@@ -1,0 +1,42 @@
+[package]
+name = "awake-power-timer"
+version = "0.1.0"
+description = "Keep your screen awake and schedule power actions"
+authors = ["duogxaolin"]
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "awake_power_timer_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "awake-power-timer"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-autostart = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-store = "2"
+tauri-plugin-log = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+keepawake = "0.6"
+system_shutdown = "4.0"
+thiserror = "2"
+chrono = "0.4"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = "5"
+
+[profile.release]
+strip = true
+opt-level = "s"
+lto = true
