@@ -62,14 +62,14 @@ pub async fn start_keep_awake_inner(
         Some(Instant::now() + Duration::from_secs(seconds))
     };
 
-    notify(&app, "Awake & Power Timer", "Keep awake started");
+    notify(&app, state, "Awake & Power Timer", "Keep awake started").await;
     Ok(())
 }
 
 pub async fn stop_keep_awake_inner(app: AppHandle, state: &AppState) -> Result<(), String> {
     let mut lock = state.keep_awake.lock().await;
     if stop_keep_awake_inner_state(&mut lock) {
-        notify(&app, "Awake & Power Timer", "Keep awake ended");
+        notify(&app, state, "Awake & Power Timer", "Keep awake ended").await;
     }
     Ok(())
 }
@@ -99,7 +99,10 @@ pub async fn get_keep_awake_status_inner(state: &AppState) -> KeepAwakeStatus {
     }
 }
 
-fn notify(app: &AppHandle, title: &str, body: &str) {
+async fn notify(app: &AppHandle, state: &AppState, title: &str, body: &str) {
+    if !state.notifications_enabled().await {
+        return;
+    }
     let _ = app
         .notification()
         .builder()

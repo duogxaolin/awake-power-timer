@@ -55,6 +55,7 @@ export function SettingsCard({ isDark: _isDark, setIsDark }: { isDark: boolean; 
   const save = async () => {
     localStorage.setItem('apt-settings', JSON.stringify(settings))
     await invoke('set_autostart', { enabled: settings.autostart })
+    await invoke('set_notifications_enabled', { enabled: settings.notifications })
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }

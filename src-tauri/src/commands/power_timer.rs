@@ -54,12 +54,13 @@ pub async fn start_power_timer_inner(
     let power_timer = state.power_timer.clone();
     let app_handle = app.clone();
     let warning_app = app.clone();
+    let notify_state = state.clone();
     tauri::async_runtime::spawn(async move {
-        let fired = run_timer(seconds, power_timer.clone(), rx, warning_app).await;
+        let fired = run_timer(seconds, power_timer.clone(), rx, warning_app, notify_state.clone()).await;
         if fired {
-            let _ = execute_power_action(app_handle, action).await;
+            let _ = execute_power_action(app_handle, action, notify_state).await;
         } else {
-            notify(&app_handle, "Awake & Power Timer", "Timer cancelled");
+            notify(&app_handle, &notify_state, "Awake & Power Timer", "Timer cancelled").await;
         }
         let mut lock = power_timer.lock().await;
         lock.active = false;
@@ -67,14 +68,14 @@ pub async fn start_power_timer_inner(
         lock.abort_tx = None;
     });
 
-    notify(&app, "Awake & Power Timer", &format!("{:?} scheduled", action));
+    notify(&app, state, "Awake & Power Timer", &format!("{:?} scheduled", action)).await;
     Ok(())
 }
 
 pub async fn cancel_power_timer_inner(app: AppHandle, state: &AppState) -> Result<(), String> {
     let mut lock = state.power_timer.lock().await;
     if cancel_power_timer_inner_state(&mut lock) {
-        notify(&app, "Awake & Power Timer", "Timer cancelled");
+        notify(&app, state, "Awake & Power Timer", "Timer cancelled").await;
     }
     Ok(())
 }
@@ -103,6 +104,7 @@ async fn run_timer(
     state: Arc<Mutex<PowerTimerState>>,
     mut rx: oneshot::Receiver<()>,
     warning_app: AppHandle,
+    notify_state: AppState,
 ) -> bool {
     let start = Instant::now();
     let end = start + Duration::from_secs(seconds);
@@ -122,7 +124,7 @@ async fn run_timer(
                 }
                 if !warned && remaining <= 60 && remaining > 0 {
                     warned = true;
-                    notify(&warning_app, "Awake & Power Timer", "Power action in 1 minute");
+                    notify(&warning_app, &notify_state, "Awake & Power Timer", "Power action in 1 minute").await;
                 }
                 if remaining == 0 {
                     return true;
@@ -135,8 +137,8 @@ async fn run_timer(
     }
 }
 
-async fn execute_power_action(app: AppHandle, action: PowerAction) -> Result<(), String> {
-    notify(&app, "Awake & Power Timer", &format!("Executing {:?}", action));
+async fn execute_power_action(app: AppHandle, action: PowerAction, state: AppState) -> Result<(), String> {
+    notify(&app, &state, "Awake & Power Timer", &format!("Executing {:?}", action)).await;
     match action {
         PowerAction::Shutdown => {
             system_shutdown::shutdown().map_err(|e| format!("shutdown failed: {e}"))
@@ -149,7 +151,10 @@ async fn execute_power_action(app: AppHandle, action: PowerAction) -> Result<(),
     }
 }
 
-fn notify(app: &AppHandle, title: &str, body: &str) {
+async fn notify(app: &AppHandle, state: &AppState, title: &str, body: &str) {
+    if !state.notifications_enabled().await {
+        return;
+    }
     let _ = app
         .notification()
         .builder()

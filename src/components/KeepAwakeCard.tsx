@@ -23,6 +23,20 @@ export function KeepAwakeCard() {
         : preset * 60
 
   useEffect(() => {
+    const savedSettings = localStorage.getItem('apt-settings')
+    if (savedSettings) {
+      try {
+        const parsed = JSON.parse(savedSettings)
+        if (parsed?.defaultMode === 'display' || parsed?.defaultMode === 'system' || parsed?.defaultMode === 'both') {
+          setMode(parsed.defaultMode)
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, [])
+
+  useEffect(() => {
     const fetchStatus = () =>
       invoke<{ active: boolean; remaining_seconds: number }>('get_keep_awake_status').then((s) => {
         setActive(s.active)

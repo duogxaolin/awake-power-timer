@@ -79,6 +79,7 @@ impl Default for PowerTimerState {
 pub struct AppState {
     pub keep_awake: Arc<Mutex<KeepAwakeState>>,
     pub power_timer: Arc<Mutex<PowerTimerState>>,
+    pub notifications_enabled: Arc<Mutex<bool>>,
 }
 
 impl Default for AppState {
@@ -86,6 +87,17 @@ impl Default for AppState {
         Self {
             keep_awake: Arc::new(Mutex::new(KeepAwakeState::default())),
             power_timer: Arc::new(Mutex::new(PowerTimerState::default())),
+            notifications_enabled: Arc::new(Mutex::new(true)),
         }
+    }
+}
+
+impl AppState {
+    pub async fn notifications_enabled(&self) -> bool {
+        *self.notifications_enabled.lock().await
+    }
+
+    pub async fn set_notifications_enabled(&self, enabled: bool) {
+        *self.notifications_enabled.lock().await = enabled;
     }
 }

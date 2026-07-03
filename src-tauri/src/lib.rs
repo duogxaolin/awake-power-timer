@@ -3,6 +3,7 @@ pub mod state;
 pub mod tray;
 
 use state::AppState;
+use tauri::Manager;
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use tauri_plugin_notification::NotificationExt;
@@ -34,6 +35,13 @@ pub fn run() {
             if let Err(e) = app.notification().request_permission() {
                 eprintln!("notification permission request failed: {e}");
             }
+            let state = app.state::<AppState>().inner().clone();
+            let app_handle = app.app_handle().clone();
+            tauri::async_runtime::block_on(async move {
+                if let Err(e) = commands::settings::load_notifications_from_store(&app_handle, &state).await {
+                    eprintln!("failed to load notifications setting: {e}");
+                }
+            });
             tray::setup_tray(app)?;
             app.global_shortcut().register(shortcut)?;
             Ok(())
@@ -45,6 +53,8 @@ pub fn run() {
             commands::power_timer::start_power_timer,
             commands::power_timer::cancel_power_timer,
             commands::power_timer::get_power_timer_status,
+            commands::settings::get_settings,
+            commands::settings::set_notifications_enabled,
             set_autostart,
         ])
         .run(tauri::generate_context!())

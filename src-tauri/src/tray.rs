@@ -4,7 +4,6 @@ use tauri::async_runtime::Mutex;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent};
 use tauri::Manager;
-use tauri_plugin_notification::NotificationExt;
 
 pub struct TrayIconHandle(pub Mutex<Option<TrayIcon>>);
 
@@ -103,11 +102,3 @@ pub fn show_window(app: &tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-fn _notify(app: &tauri::AppHandle, title: &str, body: &str) {
-    let _ = app
-        .notification()
-        .builder()
-        .title(title)
-        .body(body)
-        .show();
-}
