@@ -84,5 +84,10 @@
   "idleMinutes": "Rảnh trong",
   "idleCpuThreshold": "Rảnh khi CPU dưới",
   "idleNetThreshold": "Rảnh khi mạng dưới",
-  "seconds": "giây"
+  "seconds": "giây",
+  "processAwake": "Giữ thức theo ứng dụng",
+  "processAwakeDesc": "Giữ máy thức khi một ứng dụng hoặc tiến trình đang chạy",
+  "noProcesses": "Chưa chọn ứng dụng nào",
+  "processPlaceholder": "Nhập tên ứng dụng rồi nhấn Enter",
+  "refresh": "Làm mới danh sách ứng dụng"
 }

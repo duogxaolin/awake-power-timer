@@ -63,6 +63,8 @@ pub fn run() {
             commands::scheduler::save_schedules,
             commands::idle_action::get_idle_action,
             commands::idle_action::save_idle_action,
+            commands::process_trigger::list_processes,
+            commands::process_trigger::any_process_running,
             set_autostart,
         ])
         .run(tauri::generate_context!())

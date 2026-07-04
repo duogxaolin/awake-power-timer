@@ -1,5 +1,6 @@
 use crate::state::AppState;
-use sysinfo::{Networks, System};
+use std::collections::BTreeSet;
+use sysinfo::{Networks, ProcessRefreshKind, ProcessesToUpdate, System};
 use tauri::State;
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -104,6 +105,8 @@ impl SystemMonitor {
 
         let (battery_percent, on_ac_power) = read_battery();
 
+        // (process list is refreshed separately via `refresh_processes`)
+
         SystemStats {
             cpu_usage,
             cpu_per_core,
@@ -118,6 +121,27 @@ impl SystemMonitor {
             battery_percent,
             on_ac_power,
         }
+    }
+
+    /// Refreshes the process table without pulling extra per-process detail,
+    /// keeping the scan cheap enough to run on a short interval.
+    pub fn refresh_processes(&mut self) {
+        self.sys.refresh_processes_specifics(
+            ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing(),
+        );
+    }
+
+    /// Sorted, de-duplicated set of normalized (lowercased, `.exe`-stripped)
+    /// process names currently running.
+    pub fn process_names(&self) -> BTreeSet<String> {
+        self.sys
+            .processes()
+            .values()
+            .map(|p| crate::commands::process_trigger::normalize(&p.name().to_string_lossy()))
+            .filter(|n| !n.is_empty())
+            .collect()
     }
 }
 

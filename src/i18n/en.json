@@ -84,5 +84,10 @@
   "idleMinutes": "Idle for",
   "idleCpuThreshold": "Idle when CPU below",
   "idleNetThreshold": "Idle when network below",
-  "seconds": "sec"
+  "seconds": "sec",
+  "processAwake": "App-based Keep-Awake",
+  "processAwakeDesc": "Stay awake while a chosen app or process is running",
+  "noProcesses": "No apps selected yet",
+  "processPlaceholder": "Type an app name, then Enter",
+  "refresh": "Refresh running apps"
 }

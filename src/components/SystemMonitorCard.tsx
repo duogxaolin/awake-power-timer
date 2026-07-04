@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { Activity, Cpu, MemoryStick, ArrowDownToLine, ArrowUpFromLine, Clock, Sparkles, Hourglass } from 'lucide-react'
+import { Activity, Cpu, MemoryStick, ArrowDownToLine, ArrowUpFromLine, Clock, Sparkles, Hourglass, AppWindow, X, RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn, formatBytes, formatRate, formatUptime } from '@/lib/utils'
 
@@ -37,6 +37,25 @@ function loadSmart(): SmartConfig {
     // ignore malformed config
   }
   return DEFAULT_SMART
+}
+
+const PROC_KEY = 'apt-process-awake'
+
+interface ProcessConfig {
+  enabled: boolean
+  names: string[]
+}
+
+const DEFAULT_PROC: ProcessConfig = { enabled: false, names: [] }
+
+function loadProc(): ProcessConfig {
+  try {
+    const raw = localStorage.getItem(PROC_KEY)
+    if (raw) return { ...DEFAULT_PROC, ...JSON.parse(raw) }
+  } catch {
+    // ignore malformed config
+  }
+  return DEFAULT_PROC
 }
 
 type ActionType = 'shutdown' | 'restart' | 'sleep' | 'hibernate'
@@ -85,18 +104,165 @@ function Bar({ ratio, tone = 'primary' }: { ratio: number; tone?: 'primary' | 'b
   )
 }
 
+interface ProcessEntry {
+  name: string
+}
+
+/** Keep the machine awake while any of the chosen apps/processes is running. */
+function ProcessTriggerPanel({
+  proc,
+  setProc,
+  active,
+}: {
+  proc: ProcessConfig
+  setProc: React.Dispatch<React.SetStateAction<ProcessConfig>>
+  active: boolean
+}) {
+  const { t } = useTranslation()
+  const [running, setRunning] = useState<ProcessEntry[]>([])
+  const [loading, setLoading] = useState(false)
+  const [query, setQuery] = useState('')
+
+  const refresh = async () => {
+    setLoading(true)
+    try {
+      const list = await invoke<ProcessEntry[]>('list_processes')
+      setRunning(list)
+    } catch {
+      // backend not ready
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (proc.enabled) refresh()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proc.enabled])
+
+  const addName = (name: string) => {
+    const clean = name.trim().toLowerCase().replace(/\.exe$/, '')
+    if (!clean) return
+    setProc((c) => (c.names.includes(clean) ? c : { ...c, names: [...c.names, clean] }))
+    setQuery('')
+  }
+
+  const removeName = (name: string) => {
+    setProc((c) => ({ ...c, names: c.names.filter((n) => n !== name) }))
+  }
+
+  const suggestions = query
+    ? running
+        .filter((p) => p.name.includes(query.toLowerCase()) && !proc.names.includes(p.name))
+        .slice(0, 6)
+    : []
+
+  return (
+    <div className={cn('rounded-2xl border bg-card p-6 shadow-sm transition-all', active ? 'border-sky-500 ring-2 ring-sky-500/30' : proc.enabled ? 'border-sky-500/60' : 'border-border')}>
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <AppWindow className={cn('w-5 h-5', proc.enabled ? 'text-sky-500' : 'text-muted-foreground')} />
+          <h3 className="font-semibold">{t('processAwake')}</h3>
+        </div>
+        <label className="relative inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            className="sr-only peer"
+            checked={proc.enabled}
+            onChange={(e) => setProc((c) => ({ ...c, enabled: e.target.checked }))}
+          />
+          <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-sky-500 transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5" />
+        </label>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">{t('processAwakeDesc')}</p>
+
+      {proc.enabled && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {proc.names.length === 0 && <span className="text-sm text-muted-foreground">{t('noProcesses')}</span>}
+            {proc.names.map((name) => (
+              <span key={name} className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 px-3 py-1 text-sm font-medium">
+                {name}
+                <button type="button" onClick={() => removeName(name)} className="hover:text-sky-800 dark:hover:text-sky-200" aria-label={t('delete')}>
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+
+          <div className="relative">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') addName(query)
+                }}
+                placeholder={t('processPlaceholder')}
+                className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-sky-500"
+              />
+              <button
+                type="button"
+                onClick={refresh}
+                disabled={loading}
+                className="rounded-lg border border-border bg-background px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
+                aria-label={t('refresh')}
+                title={t('refresh')}
+              >
+                <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
+              </button>
+            </div>
+            {suggestions.length > 0 && (
+              <div className="absolute z-10 mt-1 w-full rounded-lg border border-border bg-card shadow-lg overflow-hidden">
+                {suggestions.map((p) => (
+                  <button
+                    key={p.name}
+                    type="button"
+                    onClick={() => addName(p.name)}
+                    className="block w-full text-left px-3 py-2 text-sm hover:bg-accent"
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className={cn('text-sm font-medium flex items-center gap-2', active ? 'text-sky-500' : 'text-muted-foreground')}>
+            <span className={cn('w-2 h-2 rounded-full', active ? 'bg-sky-500 animate-pulse' : 'bg-muted-foreground/50')} />
+            {active ? t('triggerActive') : t('waitingForTrigger')}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function SystemMonitorCard() {
   const { t } = useTranslation()
   const [stats, setStats] = useState<SystemStats | null>(null)
   const [smart, setSmart] = useState<SmartConfig>(loadSmart)
+  const [proc, setProc] = useState<ProcessConfig>(loadProc)
   const [triggerActive, setTriggerActive] = useState(false)
-  const triggerRef = useRef(false)
+  const [procActive, setProcActive] = useState(false)
+  // A single wake lock is shared by the CPU/net and process triggers so they
+  // never race to start/stop it; `holdRef` tracks whether we currently hold it.
+  const holdRef = useRef(false)
+  const smartRef = useRef(smart)
+  const procRef = useRef(proc)
   const [idle, setIdle] = useState<IdleActionConfig>(DEFAULT_IDLE)
   const idleLoaded = useRef(false)
 
   useEffect(() => {
     localStorage.setItem(SMART_KEY, JSON.stringify(smart))
+    smartRef.current = smart
   }, [smart])
+
+  useEffect(() => {
+    localStorage.setItem(PROC_KEY, JSON.stringify(proc))
+    procRef.current = proc
+  }, [proc])
 
   // Idle auto-action config is owned by the Rust backend (it runs the watcher).
   useEffect(() => {
@@ -119,13 +285,15 @@ export function SystemMonitorCard() {
   useEffect(() => {
     let cancelled = false
     const poll = async () => {
+      let s: SystemStats | null = null
       try {
-        const s = await invoke<SystemStats>('get_system_stats')
+        s = await invoke<SystemStats>('get_system_stats')
         if (!cancelled) setStats(s)
-        if (smart.enabled) await evaluateSmart(s)
       } catch {
         // backend not ready yet
+        return
       }
+      await evaluateTriggers(s)
     }
     poll()
     const id = setInterval(poll, 2000)
@@ -134,27 +302,48 @@ export function SystemMonitorCard() {
       clearInterval(id)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [smart.enabled, smart.cpuThreshold, smart.netThresholdKb])
+  }, [])
 
-  // When smart mode turns off, release any trigger-held keep-awake.
+  // Releases the shared wake lock when both triggers are switched off.
   useEffect(() => {
-    if (!smart.enabled && triggerRef.current) {
-      triggerRef.current = false
+    if (!smart.enabled && !proc.enabled && holdRef.current) {
+      holdRef.current = false
       setTriggerActive(false)
+      setProcActive(false)
       invoke('stop_keep_awake').catch(() => {})
     }
-  }, [smart.enabled])
+  }, [smart.enabled, proc.enabled])
 
-  const evaluateSmart = async (s: SystemStats) => {
-    const netKb = (s.net_rx_per_sec + s.net_tx_per_sec) / 1024
-    const busy = s.cpu_usage >= smart.cpuThreshold || netKb >= smart.netThresholdKb
-    if (busy && !triggerRef.current) {
-      triggerRef.current = true
-      setTriggerActive(true)
+  // Evaluates both the CPU/net trigger and the process trigger, then holds a
+  // single wake lock if either wants it. Using one lock avoids the two triggers
+  // stopping each other's keep-awake.
+  const evaluateTriggers = async (s: SystemStats) => {
+    const sm = smartRef.current
+    const pr = procRef.current
+
+    let smartBusy = false
+    if (sm.enabled) {
+      const netKb = (s.net_rx_per_sec + s.net_tx_per_sec) / 1024
+      smartBusy = s.cpu_usage >= sm.cpuThreshold || netKb >= sm.netThresholdKb
+    }
+    setTriggerActive(smartBusy)
+
+    let procBusy = false
+    if (pr.enabled && pr.names.length > 0) {
+      try {
+        procBusy = await invoke<boolean>('any_process_running', { names: pr.names })
+      } catch {
+        procBusy = false
+      }
+    }
+    setProcActive(procBusy)
+
+    const wantHold = smartBusy || procBusy
+    if (wantHold && !holdRef.current) {
+      holdRef.current = true
       await invoke('start_keep_awake', { mode: 'both', seconds: 0 }).catch(() => {})
-    } else if (!busy && triggerRef.current) {
-      triggerRef.current = false
-      setTriggerActive(false)
+    } else if (!wantHold && holdRef.current) {
+      holdRef.current = false
       await invoke('stop_keep_awake').catch(() => {})
     }
   }
@@ -292,6 +481,8 @@ export function SystemMonitorCard() {
           </div>
         )}
       </div>
+
+      <ProcessTriggerPanel proc={proc} setProc={setProc} active={procActive} />
 
       <div className={cn('rounded-2xl border bg-card p-6 shadow-sm transition-all', idle.enabled ? 'border-amber-500/60' : 'border-border')}>
         <div className="flex items-center justify-between mb-1">
