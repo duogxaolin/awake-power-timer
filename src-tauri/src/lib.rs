@@ -68,6 +68,8 @@ pub fn run() {
             commands::process_trigger::any_process_running,
             commands::battery_action::get_battery_action,
             commands::battery_action::save_battery_action,
+            commands::history::get_activity_log,
+            commands::history::clear_activity_log,
             set_autostart,
         ])
         .run(tauri::generate_context!())

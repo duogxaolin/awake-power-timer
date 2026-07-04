@@ -93,5 +93,10 @@
   "batteryAction": "Tự động khi pin yếu",
   "batteryActionDesc": "Chạy hành động nguồn khi pin yếu lúc dùng pin",
   "batteryThreshold": "Kích hoạt khi pin bằng hoặc dưới",
-  "charging": "đang sạc"
+  "charging": "đang sạc",
+  "history": "Lịch sử",
+  "activityLog": "Nhật ký hoạt động",
+  "activityLogDesc": "Mọi sự kiện nguồn tự động, mới nhất trước",
+  "clearLog": "Xóa",
+  "noActivity": "Chưa ghi nhận hoạt động nào"
 }

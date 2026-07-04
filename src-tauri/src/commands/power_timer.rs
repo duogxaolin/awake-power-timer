@@ -58,9 +58,19 @@ pub async fn start_power_timer_inner(
     tauri::async_runtime::spawn(async move {
         let fired = run_timer(seconds, power_timer.clone(), rx, warning_app, notify_state.clone()).await;
         if fired {
+            crate::commands::history::record(
+                &app_handle,
+                crate::commands::history::EventKind::ActionExecuted,
+                format!("Executing {}", crate::commands::history::describe_action(action)),
+            );
             let _ = execute_power_action(app_handle, action, notify_state).await;
         } else {
             notify(&app_handle, &notify_state, "Awake & Power Timer", "Timer cancelled").await;
+            crate::commands::history::record(
+                &app_handle,
+                crate::commands::history::EventKind::TimerCancelled,
+                format!("{} timer cancelled", crate::commands::history::describe_action(action)),
+            );
         }
         let mut lock = power_timer.lock().await;
         lock.active = false;
@@ -69,6 +79,15 @@ pub async fn start_power_timer_inner(
     });
 
     notify(&app, state, "Awake & Power Timer", &format!("{:?} scheduled", action)).await;
+    crate::commands::history::record(
+        &app,
+        crate::commands::history::EventKind::TimerStarted,
+        format!(
+            "{} scheduled in {}s",
+            crate::commands::history::describe_action(action),
+            seconds
+        ),
+    );
     Ok(())
 }
 

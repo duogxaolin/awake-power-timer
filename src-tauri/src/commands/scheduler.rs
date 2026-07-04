@@ -105,6 +105,16 @@ pub fn spawn_scheduler(app: AppHandle, state: AppState) {
 
             // If several rules collide, honour the first one.
             if let Some(schedule) = due.into_iter().next() {
+                crate::commands::history::record(
+                    &app,
+                    crate::commands::history::EventKind::ScheduleFired,
+                    format!(
+                        "Recurring schedule fired: {} at {:02}:{:02}",
+                        crate::commands::history::describe_action(schedule.action),
+                        schedule.hour,
+                        schedule.minute
+                    ),
+                );
                 let _ = crate::commands::power_timer::start_power_timer_inner(
                     app.clone(),
                     &state,

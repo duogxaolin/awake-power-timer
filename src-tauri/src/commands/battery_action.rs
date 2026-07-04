@@ -117,6 +117,15 @@ pub fn spawn_battery_watcher(app: AppHandle, state: AppState) {
 
             if !fired && should_fire(&config, stats.battery_percent, stats.on_ac_power) {
                 fired = true;
+                crate::commands::history::record(
+                    &app,
+                    crate::commands::history::EventKind::BatteryFired,
+                    format!(
+                        "Battery at {}%: {}",
+                        stats.battery_percent.unwrap_or(0),
+                        crate::commands::history::describe_action(config.action)
+                    ),
+                );
                 let _ = crate::commands::power_timer::start_power_timer_inner(
                     app.clone(),
                     &state,

@@ -93,5 +93,10 @@
   "batteryAction": "Low-battery Auto-Action",
   "batteryActionDesc": "Run a power action when the battery gets low on battery power",
   "batteryThreshold": "Trigger when battery at or below",
-  "charging": "charging"
+  "charging": "charging",
+  "history": "History",
+  "activityLog": "Activity Log",
+  "activityLogDesc": "Every automated power event, newest first",
+  "clearLog": "Clear",
+  "noActivity": "No activity recorded yet"
 }

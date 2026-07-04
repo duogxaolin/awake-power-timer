@@ -118,6 +118,15 @@ pub fn spawn_idle_watcher(app: AppHandle, state: AppState) {
 
             if !fired && idle_secs >= config.idle_minutes * 60 {
                 fired = true;
+                crate::commands::history::record(
+                    &app,
+                    crate::commands::history::EventKind::IdleFired,
+                    format!(
+                        "Idle for {} min: {}",
+                        config.idle_minutes,
+                        crate::commands::history::describe_action(config.action)
+                    ),
+                );
                 let _ = crate::commands::power_timer::start_power_timer_inner(
                     app.clone(),
                     &state,
