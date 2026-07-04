@@ -78,5 +78,11 @@
   "sat": "T7",
   "sun": "CN",
   "at": "lúc",
-  "graceCountdown": "Đếm ngược cảnh báo"
+  "graceCountdown": "Đếm ngược cảnh báo",
+  "idleAction": "Tự động khi rảnh",
+  "idleActionDesc": "Chạy hành động nguồn khi máy ở trạng thái rảnh",
+  "idleMinutes": "Rảnh trong",
+  "idleCpuThreshold": "Rảnh khi CPU dưới",
+  "idleNetThreshold": "Rảnh khi mạng dưới",
+  "seconds": "giây"
 }

@@ -78,5 +78,11 @@
   "sat": "Sat",
   "sun": "Sun",
   "at": "at",
-  "graceCountdown": "Warning countdown"
+  "graceCountdown": "Warning countdown",
+  "idleAction": "Idle Auto-Action",
+  "idleActionDesc": "Run a power action once the machine stays idle",
+  "idleMinutes": "Idle for",
+  "idleCpuThreshold": "Idle when CPU below",
+  "idleNetThreshold": "Idle when network below",
+  "seconds": "sec"
 }

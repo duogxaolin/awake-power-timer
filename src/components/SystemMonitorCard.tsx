@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { Activity, Cpu, MemoryStick, ArrowDownToLine, ArrowUpFromLine, Clock, Sparkles } from 'lucide-react'
+import { Activity, Cpu, MemoryStick, ArrowDownToLine, ArrowUpFromLine, Clock, Sparkles, Hourglass } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn, formatBytes, formatRate, formatUptime } from '@/lib/utils'
 
@@ -39,6 +39,28 @@ function loadSmart(): SmartConfig {
   return DEFAULT_SMART
 }
 
+type ActionType = 'shutdown' | 'restart' | 'sleep' | 'hibernate'
+
+interface IdleActionConfig {
+  enabled: boolean
+  action: ActionType
+  idle_minutes: number
+  cpu_threshold: number
+  net_threshold_kb: number
+  grace_seconds: number
+}
+
+const DEFAULT_IDLE: IdleActionConfig = {
+  enabled: false,
+  action: 'sleep',
+  idle_minutes: 15,
+  cpu_threshold: 15,
+  net_threshold_kb: 200,
+  grace_seconds: 120,
+}
+
+const ACTION_KEYS: ActionType[] = ['shutdown', 'restart', 'sleep', 'hibernate']
+
 function Gauge({ label, value, sub, icon: Icon, tone = 'primary' }: { label: string; value: string; sub?: string; icon: React.ElementType; tone?: 'primary' | 'blue' | 'amber' }) {
   const toneClass = tone === 'blue' ? 'text-sky-500' : tone === 'amber' ? 'text-amber-500' : 'text-primary'
   return (
@@ -69,10 +91,30 @@ export function SystemMonitorCard() {
   const [smart, setSmart] = useState<SmartConfig>(loadSmart)
   const [triggerActive, setTriggerActive] = useState(false)
   const triggerRef = useRef(false)
+  const [idle, setIdle] = useState<IdleActionConfig>(DEFAULT_IDLE)
+  const idleLoaded = useRef(false)
 
   useEffect(() => {
     localStorage.setItem(SMART_KEY, JSON.stringify(smart))
   }, [smart])
+
+  // Idle auto-action config is owned by the Rust backend (it runs the watcher).
+  useEffect(() => {
+    invoke<IdleActionConfig>('get_idle_action')
+      .then((c) => setIdle({ ...DEFAULT_IDLE, ...c }))
+      .catch(() => {})
+      .finally(() => {
+        idleLoaded.current = true
+      })
+  }, [])
+
+  const updateIdle = (changes: Partial<IdleActionConfig>) => {
+    setIdle((prev) => {
+      const next = { ...prev, ...changes }
+      if (idleLoaded.current) invoke('save_idle_action', { config: next }).catch(() => {})
+      return next
+    })
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -246,6 +288,90 @@ export function SystemMonitorCard() {
             <div className={cn('text-sm font-medium flex items-center gap-2', triggerActive ? 'text-primary' : 'text-muted-foreground')}>
               <span className={cn('w-2 h-2 rounded-full', triggerActive ? 'bg-primary animate-pulse' : 'bg-muted-foreground/50')} />
               {triggerActive ? t('triggerActive') : t('waitingForTrigger')}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className={cn('rounded-2xl border bg-card p-6 shadow-sm transition-all', idle.enabled ? 'border-amber-500/60' : 'border-border')}>
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            <Hourglass className={cn('w-5 h-5', idle.enabled ? 'text-amber-500' : 'text-muted-foreground')} />
+            <h3 className="font-semibold">{t('idleAction')}</h3>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              className="sr-only peer"
+              checked={idle.enabled}
+              onChange={(e) => updateIdle({ enabled: e.target.checked })}
+            />
+            <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-amber-500 transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5" />
+          </label>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">{t('idleActionDesc')}</p>
+
+        {idle.enabled && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {ACTION_KEYS.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => updateIdle({ action: a })}
+                  className={cn(
+                    'rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+                    idle.action === a ? 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'border-border bg-background hover:bg-accent'
+                  )}
+                >
+                  {t(a)}
+                </button>
+              ))}
+            </div>
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span>{t('idleMinutes')}</span>
+                <span className="font-mono">{idle.idle_minutes} {t('minutes')}</span>
+              </div>
+              <input
+                type="range"
+                min={1}
+                max={120}
+                step={1}
+                value={idle.idle_minutes}
+                onChange={(e) => updateIdle({ idle_minutes: Number(e.target.value) })}
+                className="w-full accent-amber-500"
+              />
+            </div>
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span>{t('idleCpuThreshold')}</span>
+                <span className="font-mono">{idle.cpu_threshold}%</span>
+              </div>
+              <input
+                type="range"
+                min={2}
+                max={50}
+                step={1}
+                value={idle.cpu_threshold}
+                onChange={(e) => updateIdle({ cpu_threshold: Number(e.target.value) })}
+                className="w-full accent-amber-500"
+              />
+            </div>
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span>{t('idleNetThreshold')}</span>
+                <span className="font-mono">{formatRate(idle.net_threshold_kb * 1024)}</span>
+              </div>
+              <input
+                type="range"
+                min={50}
+                max={2000}
+                step={50}
+                value={idle.net_threshold_kb}
+                onChange={(e) => updateIdle({ net_threshold_kb: Number(e.target.value) })}
+                className="w-full accent-amber-500"
+              />
             </div>
           </div>
         )}
