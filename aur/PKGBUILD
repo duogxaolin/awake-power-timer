@@ -1,4 +1,7 @@
-# Maintainer: Your Name <your.email@example.com>
+# Maintainer: duogxaolin <duogxaolin@gmail.com>
+# Checksums are set to SKIP because the package downloads release binaries from GitHub.
+# A proper PKGBUILD for an official AUR submission should fetch the upstream source
+# tarball and update the checksums accordingly.
 pkgname=awake-power-timer-bin
 pkgver=0.1.0
 pkgrel=1

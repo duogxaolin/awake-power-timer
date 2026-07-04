@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tauri::async_runtime::Mutex;
 use tokio::sync::oneshot;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum KeepAwakeMode {
     Display,
@@ -99,5 +99,65 @@ impl AppState {
 
     pub async fn set_notifications_enabled(&self, enabled: bool) {
         *self.notifications_enabled.lock().await = enabled;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keep_awake_mode_default_is_both() {
+        assert!(matches!(KeepAwakeMode::default(), KeepAwakeMode::Both));
+    }
+
+    #[test]
+    fn power_action_default_is_shutdown() {
+        let state = PowerTimerState::default();
+        assert!(matches!(state.action, PowerAction::Shutdown));
+    }
+
+    #[test]
+    fn keep_awake_state_defaults() {
+        let state = KeepAwakeState::default();
+        assert!(state.handle.is_none());
+        assert!(matches!(state.mode, KeepAwakeMode::Both));
+        assert!(state.end_time.is_none());
+        assert_eq!(state.remaining_seconds, 0);
+    }
+
+    #[test]
+    fn power_timer_state_defaults() {
+        let state = PowerTimerState::default();
+        assert!(!state.active);
+        assert!(matches!(state.action, PowerAction::Shutdown));
+        assert_eq!(state.total_seconds, 0);
+        assert_eq!(state.remaining_seconds, 0);
+        assert!(state.abort_tx.is_none());
+    }
+
+    #[test]
+    fn keep_awake_mode_serializes_lowercase() {
+        let json = serde_json::to_string(&KeepAwakeMode::Display).unwrap();
+        assert_eq!(json, "\"display\"");
+    }
+
+    #[test]
+    fn power_action_serializes_lowercase() {
+        let json = serde_json::to_string(&PowerAction::Hibernate).unwrap();
+        assert_eq!(json, "\"hibernate\"");
+    }
+
+    #[tokio::test]
+    async fn app_state_notifications_default_true() {
+        let state = AppState::default();
+        assert!(state.notifications_enabled().await);
+    }
+
+    #[tokio::test]
+    async fn app_state_notifications_can_be_disabled() {
+        let state = AppState::default();
+        state.set_notifications_enabled(false).await;
+        assert!(!state.notifications_enabled().await);
     }
 }

@@ -70,7 +70,8 @@ cargo clippy
 
 ## Building
 
-Build native packages for the current platform:
+`npm run build` produces the frontend bundle and works cross-platform.
+`npm run tauri:build` produces native installers for the current platform.
 
 ```bash
 npm run tauri:build

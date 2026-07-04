@@ -162,3 +162,40 @@ async fn notify(app: &AppHandle, state: &AppState, title: &str, body: &str) {
         .body(body)
         .show();
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn status_default_is_inactive() {
+        let state = AppState::default();
+        let status = get_power_timer_status_inner(&state).await;
+        assert!(!status.active);
+        assert_eq!(status.remaining_seconds, 0);
+        assert!(matches!(status.action, PowerAction::Shutdown));
+    }
+
+    #[tokio::test]
+    async fn status_reports_active_timer() {
+        let state = AppState::default();
+        {
+            let mut lock = state.power_timer.lock().await;
+            lock.active = true;
+            lock.action = PowerAction::Restart;
+            lock.remaining_seconds = 90;
+        }
+        let status = get_power_timer_status_inner(&state).await;
+        assert!(status.active);
+        assert_eq!(status.remaining_seconds, 90);
+        assert!(matches!(status.action, PowerAction::Restart));
+    }
+
+    #[tokio::test]
+    async fn cancel_inactive_timer_is_noop() {
+        let state = AppState::default();
+        let mut lock = state.power_timer.lock().await;
+        let was_active = cancel_power_timer_inner_state(&mut *lock);
+        assert!(!was_active);
+    }
+}

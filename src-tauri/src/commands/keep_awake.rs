@@ -110,3 +110,55 @@ async fn notify(app: &AppHandle, state: &AppState, title: &str, body: &str) {
         .body(body)
         .show();
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{Duration, Instant};
+
+    #[tokio::test]
+    async fn status_default_is_inactive() {
+        let state = AppState::default();
+        let status = get_keep_awake_status_inner(&state).await;
+        assert!(!status.active);
+        assert_eq!(status.remaining_seconds, 0);
+    }
+
+    #[tokio::test]
+    async fn status_ended_timer_marks_inactive() {
+        let state = AppState::default();
+        {
+            let mut lock = state.keep_awake.lock().await;
+            lock.handle = None;
+            lock.mode = KeepAwakeMode::Display;
+            lock.end_time = Some(Instant::now() - Duration::from_secs(1));
+            lock.remaining_seconds = 1;
+        }
+        let status = get_keep_awake_status_inner(&state).await;
+        assert!(!status.active);
+        assert_eq!(status.remaining_seconds, 0);
+    }
+
+    #[tokio::test]
+    async fn status_reports_remaining_seconds() {
+        let state = AppState::default();
+        let handle = keepawake::Builder::default()
+            .display(true)
+            .idle(true)
+            .sleep(true)
+            .reason("test")
+            .create()
+            .expect("keepawake handle should be created");
+        {
+            let mut lock = state.keep_awake.lock().await;
+            lock.handle = Some(handle);
+            lock.mode = KeepAwakeMode::System;
+            lock.end_time = Some(Instant::now() + Duration::from_secs(120));
+            lock.remaining_seconds = 120;
+        }
+        let status = get_keep_awake_status_inner(&state).await;
+        assert!(status.active);
+        assert_eq!(status.mode, KeepAwakeMode::System);
+        assert!(status.remaining_seconds <= 120 && status.remaining_seconds >= 118);
+    }
+}
