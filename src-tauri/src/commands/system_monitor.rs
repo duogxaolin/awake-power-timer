@@ -146,9 +146,29 @@ impl SystemMonitor {
 }
 
 /// Battery reporting is best-effort and platform dependent; returns `(None, None)`
-/// when no battery is present or the platform is unsupported.
+/// when no battery is present or the platform is unsupported. `on_ac_power` is
+/// inferred from the charging state (Charging/Full => plugged in).
 fn read_battery() -> (Option<u8>, Option<bool>) {
-    (None, None)
+    let manager = match battery::Manager::new() {
+        Ok(m) => m,
+        Err(_) => return (None, None),
+    };
+    let mut batteries = match manager.batteries() {
+        Ok(b) => b,
+        Err(_) => return (None, None),
+    };
+    match batteries.next() {
+        Some(Ok(bat)) => {
+            let percent = (bat.state_of_charge().value * 100.0).round().clamp(0.0, 100.0) as u8;
+            let on_ac = match bat.state() {
+                battery::State::Charging | battery::State::Full => Some(true),
+                battery::State::Discharging => Some(false),
+                _ => None,
+            };
+            (Some(percent), on_ac)
+        }
+        _ => (None, None),
+    }
 }
 
 #[cfg(test)]

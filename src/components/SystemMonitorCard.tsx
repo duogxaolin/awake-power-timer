@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { Activity, Cpu, MemoryStick, ArrowDownToLine, ArrowUpFromLine, Clock, Sparkles, Hourglass, AppWindow, X, RefreshCw } from 'lucide-react'
+import { Activity, Cpu, MemoryStick, ArrowDownToLine, ArrowUpFromLine, Clock, Sparkles, Hourglass, AppWindow, X, RefreshCw, BatteryLow, BatteryCharging } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn, formatBytes, formatRate, formatUptime } from '@/lib/utils'
 
@@ -75,6 +75,20 @@ const DEFAULT_IDLE: IdleActionConfig = {
   idle_minutes: 15,
   cpu_threshold: 15,
   net_threshold_kb: 200,
+  grace_seconds: 120,
+}
+
+interface BatteryActionConfig {
+  enabled: boolean
+  action: ActionType
+  threshold_percent: number
+  grace_seconds: number
+}
+
+const DEFAULT_BATTERY: BatteryActionConfig = {
+  enabled: false,
+  action: 'hibernate',
+  threshold_percent: 15,
   grace_seconds: 120,
 }
 
@@ -253,6 +267,8 @@ export function SystemMonitorCard() {
   const procRef = useRef(proc)
   const [idle, setIdle] = useState<IdleActionConfig>(DEFAULT_IDLE)
   const idleLoaded = useRef(false)
+  const [battery, setBattery] = useState<BatteryActionConfig>(DEFAULT_BATTERY)
+  const batteryLoaded = useRef(false)
 
   useEffect(() => {
     localStorage.setItem(SMART_KEY, JSON.stringify(smart))
@@ -278,6 +294,24 @@ export function SystemMonitorCard() {
     setIdle((prev) => {
       const next = { ...prev, ...changes }
       if (idleLoaded.current) invoke('save_idle_action', { config: next }).catch(() => {})
+      return next
+    })
+  }
+
+  // Low-battery auto-action config is also owned by the Rust backend.
+  useEffect(() => {
+    invoke<BatteryActionConfig>('get_battery_action')
+      .then((c) => setBattery({ ...DEFAULT_BATTERY, ...c }))
+      .catch(() => {})
+      .finally(() => {
+        batteryLoaded.current = true
+      })
+  }, [])
+
+  const updateBattery = (changes: Partial<BatteryActionConfig>) => {
+    setBattery((prev) => {
+      const next = { ...prev, ...changes }
+      if (batteryLoaded.current) invoke('save_battery_action', { config: next }).catch(() => {})
       return next
     })
   }
@@ -567,6 +601,71 @@ export function SystemMonitorCard() {
           </div>
         )}
       </div>
+
+      {(!stats || stats.battery_percent !== null) && (
+        <div className={cn('rounded-2xl border bg-card p-6 shadow-sm transition-all', battery.enabled ? 'border-rose-500/60' : 'border-border')}>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              {stats?.on_ac_power ? (
+                <BatteryCharging className={cn('w-5 h-5', battery.enabled ? 'text-rose-500' : 'text-emerald-500')} />
+              ) : (
+                <BatteryLow className={cn('w-5 h-5', battery.enabled ? 'text-rose-500' : 'text-muted-foreground')} />
+              )}
+              <h3 className="font-semibold">{t('batteryAction')}</h3>
+              {stats?.battery_percent != null && (
+                <span className="text-sm font-mono text-muted-foreground">
+                  {stats.battery_percent}%{stats.on_ac_power ? ` • ${t('charging')}` : ''}
+                </span>
+              )}
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={battery.enabled}
+                onChange={(e) => updateBattery({ enabled: e.target.checked })}
+              />
+              <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-rose-500 transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5" />
+            </label>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">{t('batteryActionDesc')}</p>
+
+          {battery.enabled && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {ACTION_KEYS.map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => updateBattery({ action: a })}
+                    className={cn(
+                      'rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+                      battery.action === a ? 'border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400' : 'border-border bg-background hover:bg-accent'
+                    )}
+                  >
+                    {t(a)}
+                  </button>
+                ))}
+              </div>
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span>{t('batteryThreshold')}</span>
+                  <span className="font-mono">{battery.threshold_percent}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={5}
+                  max={50}
+                  step={1}
+                  value={battery.threshold_percent}
+                  onChange={(e) => updateBattery({ threshold_percent: Number(e.target.value) })}
+                  className="w-full accent-rose-500"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

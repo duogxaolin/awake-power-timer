@@ -46,7 +46,8 @@ pub fn run() {
             app.global_shortcut().register(shortcut)?;
             let sched_state = app.state::<AppState>().inner().clone();
             commands::scheduler::spawn_scheduler(app.app_handle().clone(), sched_state.clone());
-            commands::idle_action::spawn_idle_watcher(app.app_handle().clone(), sched_state);
+            commands::idle_action::spawn_idle_watcher(app.app_handle().clone(), sched_state.clone());
+            commands::battery_action::spawn_battery_watcher(app.app_handle().clone(), sched_state);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -65,6 +66,8 @@ pub fn run() {
             commands::idle_action::save_idle_action,
             commands::process_trigger::list_processes,
             commands::process_trigger::any_process_running,
+            commands::battery_action::get_battery_action,
+            commands::battery_action::save_battery_action,
             set_autostart,
         ])
         .run(tauri::generate_context!())

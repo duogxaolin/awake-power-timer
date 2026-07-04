@@ -89,5 +89,9 @@
   "processAwakeDesc": "Stay awake while a chosen app or process is running",
   "noProcesses": "No apps selected yet",
   "processPlaceholder": "Type an app name, then Enter",
-  "refresh": "Refresh running apps"
+  "refresh": "Refresh running apps",
+  "batteryAction": "Low-battery Auto-Action",
+  "batteryActionDesc": "Run a power action when the battery gets low on battery power",
+  "batteryThreshold": "Trigger when battery at or below",
+  "charging": "charging"
 }

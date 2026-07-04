@@ -89,5 +89,9 @@
   "processAwakeDesc": "Giữ máy thức khi một ứng dụng hoặc tiến trình đang chạy",
   "noProcesses": "Chưa chọn ứng dụng nào",
   "processPlaceholder": "Nhập tên ứng dụng rồi nhấn Enter",
-  "refresh": "Làm mới danh sách ứng dụng"
+  "refresh": "Làm mới danh sách ứng dụng",
+  "batteryAction": "Tự động khi pin yếu",
+  "batteryActionDesc": "Chạy hành động nguồn khi pin yếu lúc dùng pin",
+  "batteryThreshold": "Kích hoạt khi pin bằng hoặc dưới",
+  "charging": "đang sạc"
 }
