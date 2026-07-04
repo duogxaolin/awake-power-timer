@@ -44,6 +44,8 @@ pub fn run() {
             });
             tray::setup_tray(app)?;
             app.global_shortcut().register(shortcut)?;
+            let sched_state = app.state::<AppState>().inner().clone();
+            commands::scheduler::spawn_scheduler(app.app_handle().clone(), sched_state);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -56,6 +58,8 @@ pub fn run() {
             commands::settings::get_settings,
             commands::settings::set_notifications_enabled,
             commands::system_monitor::get_system_stats,
+            commands::scheduler::get_schedules,
+            commands::scheduler::save_schedules,
             set_autostart,
         ])
         .run(tauri::generate_context!())
