@@ -1,3 +1,4 @@
+use crate::commands::system_monitor::SystemMonitor;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri::async_runtime::Mutex;
@@ -80,6 +81,7 @@ pub struct AppState {
     pub keep_awake: Arc<Mutex<KeepAwakeState>>,
     pub power_timer: Arc<Mutex<PowerTimerState>>,
     pub notifications_enabled: Arc<Mutex<bool>>,
+    pub system_monitor: Arc<Mutex<SystemMonitor>>,
 }
 
 impl Default for AppState {
@@ -88,6 +90,7 @@ impl Default for AppState {
             keep_awake: Arc::new(Mutex::new(KeepAwakeState::default())),
             power_timer: Arc::new(Mutex::new(PowerTimerState::default())),
             notifications_enabled: Arc::new(Mutex::new(true)),
+            system_monitor: Arc::new(Mutex::new(SystemMonitor::default())),
         }
     }
 }

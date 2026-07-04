@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { Moon, Sun, Settings, Zap, Timer, CalendarClock } from 'lucide-react'
+import { Moon, Sun, Settings, Zap, Timer, CalendarClock, Activity } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { KeepAwakeCard } from '@/components/KeepAwakeCard'
 import { PowerTimerCard } from '@/components/PowerTimerCard'
 import { ScheduleCard } from '@/components/ScheduleCard'
 import { SettingsCard } from '@/components/SettingsCard'
+import { SystemMonitorCard } from '@/components/SystemMonitorCard'
 import { cn } from '@/lib/utils'
 
-type Tab = 'awake' | 'timer' | 'schedule' | 'settings'
+type Tab = 'awake' | 'timer' | 'schedule' | 'monitor' | 'settings'
 
 export default function App() {
   const { t, i18n } = useTranslation()
@@ -33,6 +34,7 @@ export default function App() {
     { id: 'awake', label: t('keepAwake'), icon: Zap },
     { id: 'timer', label: t('powerTimer'), icon: Timer },
     { id: 'schedule', label: t('schedule'), icon: CalendarClock },
+    { id: 'monitor', label: t('monitor'), icon: Activity },
     { id: 'settings', label: t('settings'), icon: Settings },
   ]
 
@@ -96,6 +98,7 @@ export default function App() {
         {activeTab === 'awake' && <KeepAwakeCard />}
         {activeTab === 'timer' && <PowerTimerCard />}
         {activeTab === 'schedule' && <ScheduleCard />}
+        {activeTab === 'monitor' && <SystemMonitorCard />}
         {activeTab === 'settings' && <SettingsCard isDark={isDark} setIsDark={setIsDark} />}
       </main>
     </div>

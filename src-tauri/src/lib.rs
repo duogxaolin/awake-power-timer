@@ -55,6 +55,7 @@ pub fn run() {
             commands::power_timer::get_power_timer_status,
             commands::settings::get_settings,
             commands::settings::set_notifications_enabled,
+            commands::system_monitor::get_system_stats,
             set_autostart,
         ])
         .run(tauri::generate_context!())
